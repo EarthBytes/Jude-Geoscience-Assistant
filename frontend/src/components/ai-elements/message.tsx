@@ -1,11 +1,12 @@
-import type { ReactNode } from 'react'
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
-import remarkMath from 'remark-math'
-import rehypeKatex from 'rehype-katex'
-import 'katex/dist/katex.min.css'
+import { lazy, Suspense, type ReactNode } from 'react'
 import { cn } from '../../lib/utils'
 import type { MessageRole } from '../../types'
+
+const RichMessageResponse = lazy(() =>
+  import('./rich-message-response').then((module) => ({
+    default: module.RichMessageResponse,
+  })),
+)
 
 export function Message({
   from,
@@ -79,13 +80,10 @@ export function MessageResponse({ content }: { content: string }) {
   }
 
   return (
-    <div className="prose-jude">
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm, remarkMath]}
-        rehypePlugins={[rehypeKatex]}
-        >
-        {content}
-        </ReactMarkdown>
-    </div>
+    <Suspense
+      fallback={<p className="whitespace-pre-wrap">{content}</p>}
+    >
+      <RichMessageResponse content={content} />
+    </Suspense>
   )
 }
