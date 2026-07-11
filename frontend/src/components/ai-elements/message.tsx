@@ -55,7 +55,7 @@ export function MessageContent({
   return (
     <div
       className={cn(
-        'rounded-2xl px-4 py-3 text-[0.95rem] leading-relaxed',
+        'select-text rounded-2xl px-4 py-3 text-[0.95rem] leading-relaxed',
         isUser
           ? 'rounded-br-md bg-[var(--bg-user)] text-[var(--parchment)] shadow-[0_6px_20px_rgba(7,20,16,0.16)]'
           : 'rounded-bl-md border border-[var(--border-on-sand)] bg-[var(--bg-assistant)] text-[var(--text-ink)] shadow-[0_4px_18px_rgba(26,32,28,0.08)]',

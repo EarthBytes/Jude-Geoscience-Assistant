@@ -121,7 +121,8 @@ input {
 }
 
 .animate-fade-up {
-  animation: fade-up 0.45s ease-out both;
+  /* Omit fill-mode:both so transform does not persist and block text selection */
+  animation: fade-up 0.45s ease-out;
 }
 
 .animate-pulse-soft {
