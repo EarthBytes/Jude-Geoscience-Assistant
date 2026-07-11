@@ -1,6 +1,6 @@
 import {
+  useCallback,
   useEffect,
-  useEffectEvent,
   useRef,
   useState,
   type FormEvent,
@@ -49,10 +49,10 @@ export default function App() {
   const abortRef = useRef<AbortController | null>(null)
   const streamingIdRef = useRef<string | null>(null)
 
-  const refreshConversations = useEffectEvent(async () => {
+  const refreshConversations = useCallback(async () => {
     const rows = await listConversations()
     setConversations(rows)
-  })
+  }, [])
 
   useEffect(() => {
     void (async () => {
@@ -64,7 +64,7 @@ export default function App() {
         )
       }
     })()
-  }, [])
+  }, [refreshConversations])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
