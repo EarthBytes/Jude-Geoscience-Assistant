@@ -4,30 +4,42 @@
   --font-display: "Fraunces", Georgia, serif;
   --font-sans: "Figtree", ui-sans-serif, sans-serif;
 
-  --color-forest: #0c1f18;
-  --color-pine: #143528;
-  --color-moss: #4a7c59;
-  --color-fern: #6fa37a;
-  --color-sand: #d4b896;
+  --color-forest: #071410;
+  --color-pine: #123028;
+  --color-moss: #2f5d45;
+  --color-fern: #6a9b78;
+  --color-sand: #dcc9a8;
   --color-sandstone: #c4a574;
-  --color-parchment: #f4efe6;
-  --color-charcoal: #1a1f1c;
-  --color-slate: #6b756f;
-  --color-mist: #a8b5ad;
+  --color-parchment: #f3ece2;
+  --color-charcoal: #1a201c;
+  --color-slate: #4f5c56;
+  --color-mist: #b7c4bc;
 }
 
 :root {
   color-scheme: dark;
-  --bg-deep: #0c1f18;
-  --bg-panel: rgba(20, 53, 40, 0.72);
-  --bg-elevated: rgba(26, 58, 44, 0.9);
-  --border-soft: rgba(212, 184, 150, 0.18);
-  --text-primary: #f4efe6;
-  --text-muted: #a8b5ad;
+  --bg-deep: #071410;
+  --bg-panel: rgba(18, 48, 40, 0.88);
+  --bg-elevated: rgba(22, 52, 42, 0.95);
+  --bg-sidebar: rgba(7, 20, 16, 0.96);
+  --bg-prompt-bar: rgba(7, 20, 16, 0.62);
+  --bg-conversation: #e6dcc8;
+  --bg-assistant: #faf6ef;
+  --bg-user: #2f5d45;
+  --border-soft: rgba(220, 201, 168, 0.22);
+  --border-on-sand: rgba(47, 93, 69, 0.14);
+  /* Light text for dark green chrome (sidebar, prompt, header) */
+  --text-primary: #f3ece2;
+  --text-muted: #9aaba2;
+  /* Dark text for conversation plane */
+  --text-ink: #1a201c;
+  --text-ink-muted: #4f5c56;
   --accent: #c4a574;
-  --accent-soft: rgba(196, 165, 116, 0.16);
-  --moss: #4a7c59;
-  --fern: #6fa37a;
+  --accent-soft: rgba(196, 165, 116, 0.18);
+  --moss: #2f5d45;
+  --fern: #6a9b78;
+  --hover-on-dark: rgba(243, 236, 226, 0.07);
+  --hover-on-dark-strong: rgba(243, 236, 226, 0.12);
 }
 
 * {
@@ -45,10 +57,10 @@ body {
   font-family: var(--font-sans);
   color: var(--text-primary);
   background:
-    radial-gradient(ellipse 80% 60% at 10% -10%, rgba(74, 124, 89, 0.35), transparent 55%),
-    radial-gradient(ellipse 70% 50% at 100% 0%, rgba(196, 165, 116, 0.18), transparent 50%),
-    radial-gradient(ellipse 60% 40% at 50% 100%, rgba(15, 42, 31, 0.9), transparent 60%),
-    linear-gradient(165deg, #0a1812 0%, #0f2a1f 42%, #12281f 100%);
+    radial-gradient(ellipse 75% 55% at 8% -8%, rgba(47, 93, 69, 0.42), transparent 58%),
+    radial-gradient(ellipse 65% 45% at 100% 5%, rgba(196, 165, 116, 0.14), transparent 52%),
+    radial-gradient(ellipse 55% 35% at 45% 100%, rgba(7, 20, 16, 0.95), transparent 62%),
+    linear-gradient(168deg, #050f0c 0%, #0c221a 40%, #10261e 100%);
   background-attachment: fixed;
   -webkit-font-smoothing: antialiased;
 }
@@ -58,12 +70,12 @@ body::before {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  opacity: 0.04;
+  opacity: 0.035;
   background-image:
-    linear-gradient(rgba(244, 239, 230, 0.5) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(244, 239, 230, 0.5) 1px, transparent 1px);
-  background-size: 48px 48px;
-  mask-image: radial-gradient(ellipse at center, black 30%, transparent 80%);
+    linear-gradient(rgba(243, 236, 226, 0.55) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(243, 236, 226, 0.55) 1px, transparent 1px);
+  background-size: 52px 52px;
+  mask-image: radial-gradient(ellipse at center, black 28%, transparent 78%);
 }
 
 button,
@@ -73,8 +85,8 @@ input {
 }
 
 ::selection {
-  background: rgba(196, 165, 116, 0.35);
-  color: #f4efe6;
+  background: rgba(47, 93, 69, 0.35);
+  color: #f3ece2;
 }
 
 @keyframes fade-up {
@@ -101,10 +113,10 @@ input {
 @keyframes glow-breathe {
   0%,
   100% {
-    box-shadow: 0 0 0 0 rgba(111, 163, 122, 0);
+    box-shadow: 0 0 0 0 rgba(106, 155, 120, 0);
   }
   50% {
-    box-shadow: 0 0 24px 2px rgba(111, 163, 122, 0.18);
+    box-shadow: 0 0 24px 2px rgba(106, 155, 120, 0.18);
   }
 }
 
@@ -118,7 +130,7 @@ input {
 
 .prose-jude {
   line-height: 1.65;
-  color: var(--text-primary);
+  color: var(--text-ink);
 }
 
 .prose-jude p {
@@ -144,28 +156,30 @@ input {
 }
 
 .prose-jude strong {
-  color: var(--sand);
+  color: var(--moss);
   font-weight: 600;
 }
 
 .prose-jude code {
   font-size: 0.9em;
-  background: rgba(12, 31, 24, 0.55);
-  border: 1px solid var(--border-soft);
+  background: rgba(47, 93, 69, 0.1);
+  border: 1px solid var(--border-on-sand);
   border-radius: 0.35rem;
   padding: 0.1em 0.35em;
+  color: var(--text-ink);
 }
 
 .prose-jude pre {
   overflow-x: auto;
-  background: rgba(12, 31, 24, 0.7);
-  border: 1px solid var(--border-soft);
+  background: rgba(26, 32, 28, 0.06);
+  border: 1px solid var(--border-on-sand);
   border-radius: 0.75rem;
   padding: 0.85rem 1rem;
+  color: var(--text-ink);
 }
 
 .prose-jude a {
-  color: var(--fern);
+  color: var(--moss);
   text-decoration: underline;
   text-underline-offset: 2px;
 }
@@ -176,12 +190,12 @@ input {
   font-family: var(--font-display);
   font-weight: 600;
   margin: 1em 0 0.4em;
-  color: var(--parchment);
+  color: var(--text-ink);
 }
 
 .scrollbar-thin {
   scrollbar-width: thin;
-  scrollbar-color: rgba(196, 165, 116, 0.35) transparent;
+  scrollbar-color: rgba(79, 92, 86, 0.35) transparent;
 }
 
 .scrollbar-thin::-webkit-scrollbar {
@@ -189,6 +203,6 @@ input {
 }
 
 .scrollbar-thin::-webkit-scrollbar-thumb {
-  background: rgba(196, 165, 116, 0.35);
+  background: rgba(79, 92, 86, 0.35);
   border-radius: 999px;
 }
