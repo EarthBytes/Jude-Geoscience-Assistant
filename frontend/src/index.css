@@ -169,6 +169,15 @@ input {
   color: var(--text-ink);
 }
 
+.prose-jude .katex-display {
+  overflow-x: auto;
+  padding: 0.75rem 0;
+}
+
+.prose-jude .katex {
+  font-size: 1.05em;
+}
+
 .prose-jude pre {
   overflow-x: auto;
   background: rgba(26, 32, 28, 0.06);
