@@ -1,0 +1,194 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Fraunces", Georgia, serif;
+  --font-sans: "Figtree", ui-sans-serif, sans-serif;
+
+  --color-forest: #0c1f18;
+  --color-pine: #143528;
+  --color-moss: #4a7c59;
+  --color-fern: #6fa37a;
+  --color-sand: #d4b896;
+  --color-sandstone: #c4a574;
+  --color-parchment: #f4efe6;
+  --color-charcoal: #1a1f1c;
+  --color-slate: #6b756f;
+  --color-mist: #a8b5ad;
+}
+
+:root {
+  color-scheme: dark;
+  --bg-deep: #0c1f18;
+  --bg-panel: rgba(20, 53, 40, 0.72);
+  --bg-elevated: rgba(26, 58, 44, 0.9);
+  --border-soft: rgba(212, 184, 150, 0.18);
+  --text-primary: #f4efe6;
+  --text-muted: #a8b5ad;
+  --accent: #c4a574;
+  --accent-soft: rgba(196, 165, 116, 0.16);
+  --moss: #4a7c59;
+  --fern: #6fa37a;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  color: var(--text-primary);
+  background:
+    radial-gradient(ellipse 80% 60% at 10% -10%, rgba(74, 124, 89, 0.35), transparent 55%),
+    radial-gradient(ellipse 70% 50% at 100% 0%, rgba(196, 165, 116, 0.18), transparent 50%),
+    radial-gradient(ellipse 60% 40% at 50% 100%, rgba(15, 42, 31, 0.9), transparent 60%),
+    linear-gradient(165deg, #0a1812 0%, #0f2a1f 42%, #12281f 100%);
+  background-attachment: fixed;
+  -webkit-font-smoothing: antialiased;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.04;
+  background-image:
+    linear-gradient(rgba(244, 239, 230, 0.5) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(244, 239, 230, 0.5) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(ellipse at center, black 30%, transparent 80%);
+}
+
+button,
+textarea,
+input {
+  font: inherit;
+}
+
+::selection {
+  background: rgba(196, 165, 116, 0.35);
+  color: #f4efe6;
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse-soft {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes glow-breathe {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(111, 163, 122, 0);
+  }
+  50% {
+    box-shadow: 0 0 24px 2px rgba(111, 163, 122, 0.18);
+  }
+}
+
+.animate-fade-up {
+  animation: fade-up 0.45s ease-out both;
+}
+
+.animate-pulse-soft {
+  animation: pulse-soft 1.4s ease-in-out infinite;
+}
+
+.prose-jude {
+  line-height: 1.65;
+  color: var(--text-primary);
+}
+
+.prose-jude p {
+  margin: 0.65em 0;
+}
+
+.prose-jude p:first-child {
+  margin-top: 0;
+}
+
+.prose-jude p:last-child {
+  margin-bottom: 0;
+}
+
+.prose-jude ul,
+.prose-jude ol {
+  margin: 0.65em 0;
+  padding-left: 1.25em;
+}
+
+.prose-jude li + li {
+  margin-top: 0.25em;
+}
+
+.prose-jude strong {
+  color: var(--sand);
+  font-weight: 600;
+}
+
+.prose-jude code {
+  font-size: 0.9em;
+  background: rgba(12, 31, 24, 0.55);
+  border: 1px solid var(--border-soft);
+  border-radius: 0.35rem;
+  padding: 0.1em 0.35em;
+}
+
+.prose-jude pre {
+  overflow-x: auto;
+  background: rgba(12, 31, 24, 0.7);
+  border: 1px solid var(--border-soft);
+  border-radius: 0.75rem;
+  padding: 0.85rem 1rem;
+}
+
+.prose-jude a {
+  color: var(--fern);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.prose-jude h1,
+.prose-jude h2,
+.prose-jude h3 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  margin: 1em 0 0.4em;
+  color: var(--parchment);
+}
+
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(196, 165, 116, 0.35) transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 8px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: rgba(196, 165, 116, 0.35);
+  border-radius: 999px;
+}
