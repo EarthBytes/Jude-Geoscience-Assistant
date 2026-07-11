@@ -1,0 +1,16 @@
+# Root
+.env
+.DS_Store
+*.db
+__pycache__/
+*.pyc
+.venv/
+node_modules/
+dist/
+.pytest_cache/
+.mypy_cache/
+backend/data/*.db
+
+# Local IDE
+.idea/
+.vscode/
