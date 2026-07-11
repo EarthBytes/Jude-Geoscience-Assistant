@@ -37,13 +37,3 @@ export interface ChatDoneEvent {
   conversation_id: string
   assistant_message: Message
 }
-
-export const TASKS: { id: TaskType; label: string; hint: string }[] = [
-  { id: 'general', label: 'Ask', hint: 'Open geography questions' },
-  { id: 'facts', label: 'Facts', hint: 'Country & place facts' },
-  { id: 'compare', label: 'Compare', hint: 'Side-by-side places' },
-  { id: 'borders', label: 'Borders', hint: 'Neighbours & regions' },
-  { id: 'concepts', label: 'Concepts', hint: 'Terms & processes' },
-  { id: 'quiz', label: 'Quiz', hint: 'Revision questions' },
-  { id: 'map', label: 'Map', hint: 'Interpret a map' },
-]
