@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Dict, List
 
+from app.config import get_settings
+
 TASK_INSTRUCTIONS = {
     "general": (
         "Answer the user's geography or geology question clearly and briefly. "
@@ -88,8 +90,9 @@ def build_messages(
     """Build chat messages (system + history + current turn) for the LLM layer."""
     messages: List[Dict[str, str]] = [{"role": "system", "content": SYSTEM_PROMPT}]
 
-    # Include prior turns (already stored as user/assistant content)
-    for msg in history:
+    # Keep the newest turns so growing local conversations cannot expand every prompt.
+    bounded_history = history[-get_settings().max_history_messages :]
+    for msg in bounded_history:
         role = msg.get("role")
         content = msg.get("content", "")
         if role in ("user", "assistant") and content:

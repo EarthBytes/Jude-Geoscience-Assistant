@@ -30,7 +30,7 @@ def test_conversation_crud(client: TestClient) -> None:
     assert client.get(f"/api/conversations/{conversation_id}").status_code == 404
 
 
-def test_buffered_chat_adds_trusted_citation(
+def test_buffered_chat_returns_assistant_reply(
     client: TestClient, monkeypatch
 ) -> None:
     async def fake_reply(_: list[dict[str, str]]) -> str:
@@ -44,9 +44,7 @@ def test_buffered_chat_adds_trusted_citation(
 
     assert response.status_code == 200
     answer = response.json()["assistant_message"]["content"]
-    assert "Divergent plates move apart." in answer
-    assert "### Sources" in answer
-    assert "U.S. Geological Survey" in answer
+    assert answer == "Divergent plates move apart."
 
 
 def test_streaming_chat_persists_completed_answer(
@@ -68,7 +66,11 @@ def test_streaming_chat_persists_completed_answer(
     assert "event: meta" in body
     assert "event: token" in body
     assert "event: done" in body
-    assert "British Geological Survey" in body
+    assert "A fault releases stored energy." in body
+    conversation = client.get("/api/conversations").json()[0]
+    messages = client.get(f"/api/conversations/{conversation['id']}").json()["messages"]
+    assert [message["role"] for message in messages] == ["user", "assistant"]
+    assert messages[1]["content"] == "A fault releases stored energy."
 
 
 def test_provider_failure_returns_502_without_assistant(
