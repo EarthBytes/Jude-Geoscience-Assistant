@@ -8,6 +8,7 @@ from app.schemas import ChatRequest, ChatResponse, MessageOut
 from app.services import conversations as store
 from app.services.llm import LLMError, generate_reply, stream_reply
 from app.services.prompts import build_messages, title_from_message
+from app.services.safety import blocked_request
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
 
@@ -27,6 +28,10 @@ async def chat(body: ChatRequest):
     question = body.message.strip()
     if not question:
         raise HTTPException(status_code=400, detail="Message cannot be empty")
+
+    safety_message = blocked_request(question)
+    if safety_message:
+        raise HTTPException(status_code=400, detail=safety_message)
 
     conversation = _ensure_conversation(body.conversation_id, question)
     conversation_id = conversation["id"]
@@ -72,16 +77,12 @@ async def _stream_events(
             }
         ),
     }
-    print("STREAM STARTED")
     chunks: list[str] = []
     try:
         async for token in stream_reply(llm_messages):
             chunks.append(token)
             yield {"event": "token", "data": json.dumps({"content": token})}
-            print("TOKEN:", token)
     except Exception as exc:
-        import traceback
-        traceback.print_exc()
         yield {
             "event": "error",
             "data": json.dumps({"detail": str(exc)}),

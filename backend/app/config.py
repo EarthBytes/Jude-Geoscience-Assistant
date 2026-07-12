@@ -31,6 +31,7 @@ class Settings(BaseSettings):
     database_url: str = f"sqlite:///{DATA_DIR / 'jude.db'}"
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
     app_name: str = "Jude Geography Assistant"
+    max_history_messages: int = 12
 
     @property
     def resolved_gemini_api_key(self) -> str:
