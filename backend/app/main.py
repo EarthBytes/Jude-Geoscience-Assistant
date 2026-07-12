@@ -29,6 +29,18 @@ def create_app() -> FastAPI:
     app.include_router(conversations.router)
     app.include_router(chat.router)
 
+
+    @app.get("/")
+    def root():
+        return {
+            "app": settings.app_name,
+            "status": "running",
+            "docs": "/docs",
+            "health": "/api/health",
+        }
+
+
+
     @app.get("/api/health")
     def health():
         return {
