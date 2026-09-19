@@ -4,7 +4,7 @@ import {
   type ReactNode,
   useRef,
 } from 'react'
-import { ArrowUp } from 'lucide-react'
+import { ArrowUp, Square } from 'lucide-react'
 import { cn } from '../../lib/utils'
 
 export function PromptInput({
@@ -20,7 +20,7 @@ export function PromptInput({
     <form
       onSubmit={onSubmit}
       className={cn(
-        'rounded-2xl border border-[var(--border-soft)] bg-[var(--bg-panel)] p-2 shadow-[0_16px_40px_rgba(0,0,0,0.28)] backdrop-blur-md',
+        'prompt-shell rounded-2xl border border-[var(--border-soft)] bg-[var(--bg-panel)] p-2 backdrop-blur-md',
         className,
       )}
     >
@@ -57,6 +57,7 @@ export function PromptInputTextarea({
       value={value}
       disabled={disabled}
       rows={1}
+      aria-label="Message Jude"
       placeholder={placeholder}
       onChange={(event) => {
         onChange(event.target.value)
@@ -81,29 +82,37 @@ export function PromptInputFooter({ children }: { children: ReactNode }) {
 export function PromptInputSubmit({
   disabled,
   status,
+  onStop,
 }: {
   disabled?: boolean
   status?: 'ready' | 'streaming' | 'submitted'
+  onStop?: () => void
 }) {
   const busy = status === 'streaming' || status === 'submitted'
+  if (busy) {
+    return (
+      <button
+        type="button"
+        onClick={onStop}
+        aria-label="Stop generating"
+        className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--accent-soft)] text-[var(--sand)] transition hover:brightness-110"
+      >
+        <Square className="h-4 w-4" fill="currentColor" strokeWidth={0} />
+      </button>
+    )
+  }
   return (
     <button
       type="submit"
-      disabled={disabled || busy}
+      disabled={disabled}
       aria-label="Send message"
       className={cn(
-        'inline-flex h-10 w-10 items-center justify-center rounded-xl transition',
-        busy
-          ? 'bg-[var(--accent-soft)] text-[var(--sand)]'
-          : 'bg-[var(--sandstone)] text-[var(--forest)] hover:brightness-110',
+        'inline-flex h-10 w-10 items-center justify-center rounded-xl transition duration-200',
+        'bg-[var(--sandstone)] text-[var(--forest)] hover:brightness-110',
         'disabled:cursor-not-allowed disabled:opacity-45',
       )}
     >
-      {busy ? (
-        <span className="h-4 w-4 animate-spin rounded-full border-2 border-[var(--sand)] border-t-transparent" />
-      ) : (
-        <ArrowUp className="h-5 w-5" strokeWidth={2.25} />
-      )}
+      <ArrowUp className="h-5 w-5" strokeWidth={2.25} />
     </button>
   )
 }

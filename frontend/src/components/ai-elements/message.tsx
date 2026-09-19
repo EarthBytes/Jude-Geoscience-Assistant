@@ -1,4 +1,4 @@
-import { lazy, Suspense, type ReactNode } from 'react'
+import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react'
 import { cn } from '../../lib/utils'
 import type { MessageRole } from '../../types'
 
@@ -18,10 +18,18 @@ export function Message({
   className?: string
 }) {
   const isUser = from === 'user'
+  const [entered, setEntered] = useState(false)
+
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setEntered(true))
+    return () => cancelAnimationFrame(frame)
+  }, [])
+
   return (
     <div
       className={cn(
-        'animate-fade-up flex w-full',
+        'flex w-full',
+        entered ? 'animate-message-in' : 'message-enter',
         isUser ? 'justify-end' : 'justify-start',
         className,
       )}
@@ -56,10 +64,10 @@ export function MessageContent({
   return (
     <div
       className={cn(
-        'select-text rounded-2xl px-4 py-3 text-[0.95rem] leading-relaxed',
+        'select-text rounded-2xl px-4 py-3 text-[0.95rem] leading-relaxed transition-shadow duration-300',
         isUser
-          ? 'rounded-br-md bg-[var(--bg-user)] text-[var(--parchment)] shadow-[0_6px_20px_rgba(7,20,16,0.16)]'
-          : 'rounded-bl-md border border-[var(--border-on-sand)] bg-[var(--bg-assistant)] text-[var(--text-ink)] shadow-[0_4px_18px_rgba(26,32,28,0.08)]',
+          ? 'rounded-br-md bg-[var(--bg-user)] text-[var(--parchment)]'
+          : 'rounded-bl-md border border-[var(--border-on-sand)] bg-[var(--bg-assistant)] text-[var(--text-ink)]',
         className,
       )}
     >

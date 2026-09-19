@@ -5,14 +5,15 @@
 
 Jude is a domain-focused LLM application for geography and geology, combining prompt engineering, streaming inference, conversational memory, and full-stack deployment into an interactive learning assistant.
 
-This is a **portfolio demo**: a public, unauthenticated AI application designed to demonstrate end-to-end ML engineering and product development. Conversation history is shared across visitors by design. It is intended to showcase LLM application architecture rather than operate as a production multi-user service.
+This is a **public AI assistant** with a try-then-save funnel: anyone can chat for free. Guest threads live only in the browser and disappear on refresh. Signing in persists private conversations per user.
 
 | | |
 |---|---|
 | **Frontend** | Vercel — React + Vite SPA |
 | **Backend** | Render — FastAPI + Uvicorn |
+| **Auth** | Clerk (optional locally; required to save chats) |
 | **LLM Providers** | Google Gemini primary, Groq fallback |
-| **Database** | SQLite conversation persistence |
+| **Database** | SQLite locally, Postgres in production |
 
 ## Overview
 
@@ -60,7 +61,7 @@ Jude supports mathematical notation and technical formatting for scientific expl
 
 - **Streaming LLM inference** through Server-Sent Events (meta → token → done / error)
 - **Domain-focused prompting** using geoscience instructions and task-specific response modes
-- **Multi-turn conversation memory** with persisted conversation history
+- **Multi-turn conversation memory** — guests keep context until refresh; signed-in users get private persisted threads
 - **Provider resilience** through model retry and fallback handling
 - **Structured response generation** for explanations, comparisons, geographic facts, concepts, and quizzes
 
@@ -73,11 +74,11 @@ Browser
   └─ React + Vite (Vercel)
         │  HTTPS · JSON REST + SSE
         └─ FastAPI + Uvicorn (Render)
-              ├── /api/conversations  → SQLite
-              ├── /api/chat           → prompts → Gemini
+              ├── /api/chat           → prompts → Gemini (guest: no DB write)
               │                              ├─ lite-model retry
               │                              └─ quota fallback → Groq
-              └── /api/health         → provider + config status
+              ├── /api/conversations  → Postgres (signed-in users only)
+              └── /api/health         → database + provider status
 ```
 
 Live API health: [`https://jude-geoscience-assistant.onrender.com/api/health`](https://jude-geoscience-assistant.onrender.com/api/health)
@@ -117,7 +118,7 @@ GitHub Actions validates changes through:
 
 ## Local setup
 
-**Prerequisites:** Python 3.12, Node.js 20+, Gemini and/or Groq API keys.
+**Prerequisites:** Python 3.12, Node.js 20+, Gemini and/or Groq API keys. Clerk keys are optional for local guest chat.
 
 ### Backend
 
@@ -125,7 +126,7 @@ GitHub Actions validates changes through:
 cd backend
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
+pip install -r requirements-dev.txt
 cp .env.example .env
 # Add API keys to .env
 uvicorn app.main:app --reload --port 8000
@@ -165,6 +166,8 @@ npm run test
 cd ../backend
 python -m pytest
 ```
+
+To persist chats across refresh, create a Clerk application and set `VITE_CLERK_PUBLISHABLE_KEY` plus the backend `CLERK_*` variables. Guests can still chat without those keys.
 
 ## License
 
