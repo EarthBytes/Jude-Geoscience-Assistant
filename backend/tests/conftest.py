@@ -28,7 +28,14 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("GOOGLE_API_KEY", "")
     monkeypatch.setenv("GEMINI_API_KEY", "")
     monkeypatch.setenv("GROQ_API_KEY", "")
+    monkeypatch.setenv("ENVIRONMENT", "test")
+    monkeypatch.setenv("RATE_LIMIT_ENABLED", "false")
     get_settings.cache_clear()
     with TestClient(create_app()) as test_client:
         yield test_client
     get_settings.cache_clear()
+
+
+@pytest.fixture
+def member_headers() -> dict[str, str]:
+    return {"X-User-Id": "user-a"}

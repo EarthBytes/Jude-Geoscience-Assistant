@@ -100,6 +100,35 @@ input {
   }
 }
 
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes message-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes globe-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 @keyframes pulse-soft {
   0%,
   100% {
@@ -113,20 +142,62 @@ input {
 @keyframes glow-breathe {
   0%,
   100% {
-    box-shadow: 0 0 0 0 rgba(106, 155, 120, 0);
+    box-shadow: 0 0 0 0 rgba(47, 93, 69, 0);
   }
   50% {
-    box-shadow: 0 0 24px 2px rgba(106, 155, 120, 0.18);
+    box-shadow: 0 0 28px 2px rgba(47, 93, 69, 0.16);
   }
 }
 
 .animate-fade-up {
-  /* Omit fill-mode:both so transform does not persist and block text selection */
-  animation: fade-up 0.45s ease-out;
+  animation: fade-up 0.5s ease-out;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.2s ease-out;
+}
+
+.message-enter {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+.animate-message-in {
+  animation: message-in 0.45s ease-out both;
+}
+
+.animate-globe {
+  animation: globe-spin 36s linear infinite;
 }
 
 .animate-pulse-soft {
   animation: pulse-soft 1.4s ease-in-out infinite;
+}
+
+.animate-glow-breathe {
+  animation: glow-breathe 4.5s ease-in-out infinite;
+}
+
+.conversation-stage {
+  overflow-anchor: none;
+  background-color: var(--bg-conversation);
+  background-image:
+    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(250, 246, 239, 0.7), transparent 58%),
+    linear-gradient(180deg, rgba(255, 252, 246, 0.35), transparent 28%);
+}
+
+.prompt-shell {
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.28);
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.prompt-shell:focus-within {
+  border-color: rgba(196, 165, 116, 0.48);
+  box-shadow:
+    0 0 0 1px rgba(196, 165, 116, 0.18),
+    0 18px 44px rgba(0, 0, 0, 0.32);
 }
 
 .prose-jude {
@@ -148,12 +219,69 @@ input {
 
 .prose-jude ul,
 .prose-jude ol {
-  margin: 0.65em 0;
-  padding-left: 1.25em;
+  display: block;
+  margin: 0.7em 0;
+  padding-left: 1.4em;
 }
 
-.prose-jude li + li {
-  margin-top: 0.25em;
+.prose-jude ul {
+  list-style-type: disc;
+}
+
+.prose-jude ol {
+  list-style-type: decimal;
+}
+
+.prose-jude ul ul {
+  list-style-type: circle;
+  margin: 0.25em 0;
+}
+
+.prose-jude ol ol {
+  list-style-type: lower-alpha;
+  margin: 0.25em 0;
+}
+
+.prose-jude li {
+  display: list-item;
+  margin: 0.28em 0;
+}
+
+.prose-jude li > ul,
+.prose-jude li > ol {
+  margin: 0.2em 0 0.35em;
+}
+
+.prose-jude .table-wrap {
+  overflow-x: auto;
+  margin: 0.85em 0;
+  border: 1px solid var(--border-on-sand);
+  border-radius: 0.85rem;
+  background: rgba(255, 252, 246, 0.7);
+}
+
+.prose-jude table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92em;
+}
+
+.prose-jude th,
+.prose-jude td {
+  padding: 0.55em 0.75em;
+  border-bottom: 1px solid var(--border-on-sand);
+  text-align: left;
+  vertical-align: top;
+}
+
+.prose-jude th {
+  background: rgba(47, 93, 69, 0.1);
+  color: var(--moss);
+  font-weight: 600;
+}
+
+.prose-jude tr:last-child td {
+  border-bottom: 0;
 }
 
 .prose-jude strong {
@@ -215,4 +343,22 @@ input {
 .scrollbar-thin::-webkit-scrollbar-thumb {
   background: rgba(79, 92, 86, 0.35);
   border-radius: 999px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .message-enter,
+  .animate-fade-up,
+  .animate-fade-in,
+  .animate-message-in,
+  .animate-globe,
+  .animate-pulse-soft,
+  .animate-glow-breathe {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+
+  * {
+    scroll-behavior: auto !important;
+  }
 }

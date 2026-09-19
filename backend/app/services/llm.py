@@ -116,28 +116,53 @@ def _split_messages(
     return system, gemini_contents, groq_messages
 
 
+def _timeout_ms(settings: Settings) -> int:
+    return max(1, int(settings.llm_timeout_seconds * 1000))
+
+
 def _gemini_client(settings: Settings) -> genai.Client:
     api_key = settings.resolved_gemini_api_key
     if not api_key:
-        raise LLMError(
-            "Gemini is not configured. Set GOOGLE_API_KEY or GEMINI_API_KEY in backend/.env."
-        )
-    return genai.Client(api_key=api_key)
+        raise LLMError("Gemini is not configured.")
+    return genai.Client(
+        api_key=api_key,
+        http_options={"timeout": _timeout_ms(settings)},
+    )
+
+
+def _gemini_generation_config(system: Optional[str]) -> types.GenerateContentConfig:
+    """Prefer a fast first visible token over extra hidden reasoning."""
+    thinking_fields = getattr(types.ThinkingConfig, "model_fields", {})
+    thinking_kwargs: Dict[str, Any] = {}
+    if "include_thoughts" in thinking_fields:
+        thinking_kwargs["include_thoughts"] = False
+    if "thinking_level" in thinking_fields:
+        thinking_kwargs["thinking_level"] = "minimal"
+    elif "thinking_budget" in thinking_fields:
+        thinking_kwargs["thinking_budget"] = 0
+
+    kwargs: Dict[str, Any] = {}
+    if system:
+        kwargs["system_instruction"] = system
+    if thinking_kwargs:
+        kwargs["thinking_config"] = types.ThinkingConfig(**thinking_kwargs)
+    afc = getattr(types, "AutomaticFunctionCallingConfig", None)
+    if afc is not None:
+        kwargs["automatic_function_calling"] = afc(disable=True)
+    return types.GenerateContentConfig(**kwargs)
 
 
 def _groq_client(settings: Settings) -> AsyncGroq:
     if not settings.groq_configured:
-        raise LLMError(
-            "Groq is not configured. Set GROQ_API_KEY in backend/.env."
-        )
-    return AsyncGroq(api_key=settings.groq_api_key.strip())
+        raise LLMError("Groq is not configured.")
+    return AsyncGroq(
+        api_key=settings.groq_api_key.strip(),
+        timeout=settings.llm_timeout_seconds,
+    )
 
 
 def _no_provider_error() -> LLMError:
-    return LLMError(
-        "No LLM API key configured. Set GOOGLE_API_KEY (or GEMINI_API_KEY) "
-        "and/or GROQ_API_KEY in backend/.env."
-    )
+    return LLMError("No LLM provider is configured.")
 
 
 def _gemini_response_text(response: Any) -> str:
@@ -169,14 +194,10 @@ async def _generate_gemini(
         raise LLMError("No user messages provided to the LLM.")
 
     client = _gemini_client(settings)
-    config = types.GenerateContentConfig(
-        temperature=TEMPERATURE,
-        system_instruction=system,
-    )
     response = await client.aio.models.generate_content(
         model=model,
         contents=contents,
-        config=config,
+        config=_gemini_generation_config(system),
     )
     text = _gemini_response_text(response).strip()
     if not text:
@@ -192,14 +213,10 @@ async def _stream_gemini(
         raise LLMError("No user messages provided to the LLM.")
 
     client = _gemini_client(settings)
-    config = types.GenerateContentConfig(
-        temperature=TEMPERATURE,
-        system_instruction=system,
-    )
     stream = await client.aio.models.generate_content_stream(
         model=model,
         contents=contents,
-        config=config,
+        config=_gemini_generation_config(system),
     )
     async for chunk in stream:
         text = _gemini_response_text(chunk)

@@ -29,11 +29,18 @@ export interface ConversationDetail extends Conversation {
 }
 
 export interface ChatMetaEvent {
-  conversation_id: string
+  conversation_id: string | null
+  persisted: boolean
   user_message: Message
 }
 
 export interface ChatDoneEvent {
-  conversation_id: string
+  conversation_id: string | null
+  persisted: boolean
   assistant_message: Message
+}
+
+export interface HistoryTurn {
+  role: 'user' | 'assistant'
+  content: string
 }

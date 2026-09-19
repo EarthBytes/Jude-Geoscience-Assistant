@@ -1,70 +1,94 @@
 from __future__ import annotations
 
-import sqlite3
 from contextlib import contextmanager
 from datetime import datetime, timezone
-from typing import Any, Dict, Generator, Optional
+from typing import Generator, Optional
+
+from sqlalchemy import create_engine, event, text
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Session, sessionmaker
 
 from app.config import get_settings
+from app.models import Base
+
+_engine: Optional[Engine] = None
+_SessionLocal: Optional[sessionmaker[Session]] = None
+_engine_url: Optional[str] = None
 
 
 def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def get_connection() -> sqlite3.Connection:
-    settings = get_settings()
-    path = settings.sqlite_path
-    path.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(str(path), check_same_thread=False)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA foreign_keys = ON")
-    return conn
+def sqlalchemy_url(raw: str) -> str:
+    if raw.startswith("postgres://"):
+        return raw.replace("postgres://", "postgresql+psycopg://", 1)
+    if raw.startswith("postgresql://") and "+psycopg" not in raw:
+        return raw.replace("postgresql://", "postgresql+psycopg://", 1)
+    return raw
 
 
-@contextmanager
-def db_session() -> Generator[sqlite3.Connection, None, None]:
-    conn = get_connection()
-    try:
-        yield conn
-        conn.commit()
-    except Exception:
-        conn.rollback()
-        raise
-    finally:
-        conn.close()
+def _apply_sqlite_pragmas(dbapi_connection, _connection_record) -> None:
+    cursor = dbapi_connection.cursor()
+    cursor.execute("PRAGMA foreign_keys = ON")
+    cursor.execute("PRAGMA journal_mode = WAL")
+    cursor.execute("PRAGMA busy_timeout = 5000")
+    cursor.close()
+
+
+def configure_database(force: bool = False) -> Engine:
+    global _engine, _SessionLocal, _engine_url
+    url = sqlalchemy_url(get_settings().database_url)
+    if _engine is not None and _engine_url == url and not force:
+        return _engine
+    if _engine is not None:
+        _engine.dispose()
+
+    kwargs: dict = {"future": True}
+    if url.startswith("sqlite"):
+        kwargs["connect_args"] = {"check_same_thread": False}
+    else:
+        kwargs["pool_pre_ping"] = True
+        kwargs["pool_size"] = 5
+
+    engine = create_engine(url, **kwargs)
+    if url.startswith("sqlite"):
+        event.listen(engine, "connect", _apply_sqlite_pragmas)
+
+    Base.metadata.create_all(engine)
+    _engine = engine
+    _engine_url = url
+    _SessionLocal = sessionmaker(
+        bind=engine, autoflush=False, autocommit=False, future=True
+    )
+    return engine
 
 
 def init_db() -> None:
-    with db_session() as conn:
-        conn.executescript(
-            """
-            CREATE TABLE IF NOT EXISTS conversations (
-                id TEXT PRIMARY KEY,
-                title TEXT NOT NULL,
-                created_at TEXT NOT NULL,
-                updated_at TEXT NOT NULL
-            );
-
-            CREATE TABLE IF NOT EXISTS messages (
-                id TEXT PRIMARY KEY,
-                conversation_id TEXT NOT NULL,
-                role TEXT NOT NULL CHECK(role IN ('user', 'assistant', 'system')),
-                content TEXT NOT NULL,
-                timestamp TEXT NOT NULL,
-                FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
-            );
-
-            CREATE INDEX IF NOT EXISTS idx_messages_conversation_id
-                ON messages(conversation_id);
-
-            CREATE INDEX IF NOT EXISTS idx_conversations_updated_at
-                ON conversations(updated_at DESC);
-            """
-        )
+    configure_database(force=True)
 
 
-def row_to_dict(row: Optional[sqlite3.Row]) -> Optional[Dict[str, Any]]:
-    if row is None:
-        return None
-    return dict(row)
+def ping_db() -> bool:
+    try:
+        engine = configure_database()
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        return True
+    except Exception:  # noqa: BLE001
+        return False
+
+
+@contextmanager
+def db_session() -> Generator[Session, None, None]:
+    if _SessionLocal is None:
+        configure_database()
+    assert _SessionLocal is not None
+    session = _SessionLocal()
+    try:
+        yield session
+        session.commit()
+    except Exception:
+        session.rollback()
+        raise
+    finally:
+        session.close()

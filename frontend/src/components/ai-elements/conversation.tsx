@@ -18,18 +18,29 @@ export function Conversation({
 
 export const ConversationContent = forwardRef<
   HTMLDivElement,
-  HTMLAttributes<HTMLDivElement>
->(function ConversationContent({ className, children, ...props }, ref) {
+  HTMLAttributes<HTMLDivElement> & { center?: boolean }
+>(function ConversationContent(
+  { className, children, center = false, ...props },
+  ref,
+) {
   return (
     <div
       ref={ref}
       className={cn(
-        'scrollbar-thin flex-1 overflow-y-auto bg-[var(--bg-conversation)] px-4 py-6 sm:px-8',
+        'conversation-stage scrollbar-thin flex-1 overflow-y-auto px-4 py-6 sm:px-8',
+        center && 'flex',
         className,
       )}
       {...props}
     >
-      <div className="mx-auto flex w-full max-w-3xl flex-col gap-5">{children}</div>
+      <div
+        className={cn(
+          'mx-auto flex w-full max-w-3xl flex-col gap-5',
+          center && 'my-auto',
+        )}
+      >
+        {children}
+      </div>
     </div>
   )
 })
@@ -44,11 +55,11 @@ export function ConversationEmptyState({
   children?: ReactNode
 }) {
   return (
-    <div className="animate-fade-up mx-auto flex max-w-xl flex-col items-center px-4 py-16 text-center">
-      <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-[var(--border-on-sand)] bg-[rgba(47,93,69,0.1)] text-[var(--moss)]">
+    <div className="animate-fade-up mx-auto flex max-w-xl flex-col items-center px-4 py-10 text-center">
+      <div className="animate-glow-breathe mb-6 flex h-16 w-16 items-center justify-center rounded-2xl border border-[var(--border-on-sand)] bg-[rgba(47,93,69,0.1)] text-[var(--moss)]">
         <svg
           viewBox="0 0 24 24"
-          className="h-7 w-7"
+          className="animate-globe h-8 w-8"
           fill="none"
           stroke="currentColor"
           strokeWidth="1.5"
@@ -61,7 +72,9 @@ export function ConversationEmptyState({
       <h2 className="font-display text-3xl font-semibold tracking-tight text-[var(--text-ink)] sm:text-4xl">
         {title}
       </h2>
-      <p className="mt-3 text-base text-[var(--text-ink-muted)]">{description}</p>
+      <p className="mt-3 max-w-md text-base leading-relaxed text-[var(--text-ink-muted)]">
+        {description}
+      </p>
       {children ? <div className="mt-8 w-full">{children}</div> : null}
     </div>
   )

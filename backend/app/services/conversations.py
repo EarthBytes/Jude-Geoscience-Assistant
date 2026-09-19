@@ -3,135 +3,141 @@ from __future__ import annotations
 import uuid
 from typing import Dict, List, Optional
 
-from app.database import db_session, row_to_dict, utc_now
+from datetime import datetime, timedelta, timezone
+
+from sqlalchemy import select
+
+from app.database import db_session, utc_now
+from app.models import Conversation, Message
 
 
-def list_conversations() -> List[dict]:
-    with db_session() as conn:
-        rows = conn.execute(
-            """
-            SELECT id, title, created_at, updated_at
-            FROM conversations
-            ORDER BY updated_at DESC
-            """
-        ).fetchall()
-        return [dict(row) for row in rows]
+def list_conversations(user_id: str) -> List[dict]:
+    with db_session() as session:
+        rows = session.scalars(
+            select(Conversation)
+            .where(Conversation.user_id == user_id)
+            .order_by(Conversation.updated_at.desc())
+        ).all()
+        return [row.to_dict() for row in rows]
 
 
-def get_conversation(conversation_id: str) -> Optional[Dict]:
-    with db_session() as conn:
-        row = conn.execute(
-            """
-            SELECT id, title, created_at, updated_at
-            FROM conversations
-            WHERE id = ?
-            """,
-            (conversation_id,),
-        ).fetchone()
-        return row_to_dict(row)
+def get_conversation(user_id: str, conversation_id: str) -> Optional[Dict]:
+    with db_session() as session:
+        row = session.scalar(
+            select(Conversation).where(
+                Conversation.id == conversation_id,
+                Conversation.user_id == user_id,
+            )
+        )
+        return row.to_dict() if row else None
 
 
-def create_conversation(title: str = "New chat") -> Dict:
+def create_conversation(
+    user_id: str,
+    title: str = "New chat",
+    messages: Optional[List[dict]] = None,
+) -> Dict:
     conversation_id = str(uuid.uuid4())
     now = utc_now()
-    with db_session() as conn:
-        conn.execute(
-            """
-            INSERT INTO conversations (id, title, created_at, updated_at)
-            VALUES (?, ?, ?, ?)
-            """,
-            (conversation_id, title, now, now),
+    with db_session() as session:
+        conversation = Conversation(
+            id=conversation_id,
+            user_id=user_id,
+            title=title,
+            created_at=now,
+            updated_at=now,
         )
-    return {
-        "id": conversation_id,
-        "title": title,
-        "created_at": now,
-        "updated_at": now,
-    }
+        session.add(conversation)
+        timestamp = now
+        base = datetime.now(timezone.utc)
+        for index, item in enumerate(messages or []):
+            timestamp = (base + timedelta(milliseconds=index)).isoformat()
+            session.add(
+                Message(
+                    id=str(uuid.uuid4()),
+                    conversation_id=conversation_id,
+                    role=item["role"],
+                    content=item["content"],
+                    timestamp=timestamp,
+                )
+            )
+        if messages:
+            conversation.updated_at = timestamp
+        session.flush()
+        return conversation.to_dict()
 
 
-def update_conversation_title(conversation_id: str, title: str) -> Optional[Dict]:
+def update_conversation_title(
+    user_id: str, conversation_id: str, title: str
+) -> Optional[Dict]:
     now = utc_now()
-    with db_session() as conn:
-        cursor = conn.execute(
-            """
-            UPDATE conversations
-            SET title = ?, updated_at = ?
-            WHERE id = ?
-            """,
-            (title, now, conversation_id),
+    with db_session() as session:
+        row = session.scalar(
+            select(Conversation).where(
+                Conversation.id == conversation_id,
+                Conversation.user_id == user_id,
+            )
         )
-        if cursor.rowcount == 0:
+        if row is None:
             return None
-        row = conn.execute(
-            """
-            SELECT id, title, created_at, updated_at
-            FROM conversations
-            WHERE id = ?
-            """,
-            (conversation_id,),
-        ).fetchone()
-        return row_to_dict(row)
+        row.title = title
+        row.updated_at = now
+        session.flush()
+        return row.to_dict()
 
 
-def touch_conversation(conversation_id: str) -> None:
-    with db_session() as conn:
-        conn.execute(
-            """
-            UPDATE conversations
-            SET updated_at = ?
-            WHERE id = ?
-            """,
-            (utc_now(), conversation_id),
+def delete_conversation(user_id: str, conversation_id: str) -> bool:
+    with db_session() as session:
+        row = session.scalar(
+            select(Conversation).where(
+                Conversation.id == conversation_id,
+                Conversation.user_id == user_id,
+            )
         )
+        if row is None:
+            return False
+        session.delete(row)
+        return True
 
 
-def delete_conversation(conversation_id: str) -> bool:
-    with db_session() as conn:
-        cursor = conn.execute(
-            "DELETE FROM conversations WHERE id = ?",
-            (conversation_id,),
+def list_messages(user_id: str, conversation_id: str) -> List[dict]:
+    with db_session() as session:
+        conversation = session.scalar(
+            select(Conversation).where(
+                Conversation.id == conversation_id,
+                Conversation.user_id == user_id,
+            )
         )
-        return cursor.rowcount > 0
+        if conversation is None:
+            return []
+        rows = session.scalars(
+            select(Message)
+            .where(Message.conversation_id == conversation_id)
+            .order_by(Message.timestamp.asc())
+        ).all()
+        return [row.to_dict() for row in rows]
 
 
-def list_messages(conversation_id: str) -> List[dict]:
-    with db_session() as conn:
-        rows = conn.execute(
-            """
-            SELECT id, conversation_id, role, content, timestamp
-            FROM messages
-            WHERE conversation_id = ?
-            ORDER BY timestamp ASC
-            """,
-            (conversation_id,),
-        ).fetchall()
-        return [dict(row) for row in rows]
-
-
-def add_message(conversation_id: str, role: str, content: str) -> Dict:
+def add_message(user_id: str, conversation_id: str, role: str, content: str) -> Dict:
     message_id = str(uuid.uuid4())
     timestamp = utc_now()
-    with db_session() as conn:
-        conn.execute(
-            """
-            INSERT INTO messages (id, conversation_id, role, content, timestamp)
-            VALUES (?, ?, ?, ?, ?)
-            """,
-            (message_id, conversation_id, role, content, timestamp),
+    with db_session() as session:
+        conversation = session.scalar(
+            select(Conversation).where(
+                Conversation.id == conversation_id,
+                Conversation.user_id == user_id,
+            )
         )
-        conn.execute(
-            """
-            UPDATE conversations
-            SET updated_at = ?
-            WHERE id = ?
-            """,
-            (timestamp, conversation_id),
+        if conversation is None:
+            raise KeyError("Conversation not found")
+        message = Message(
+            id=message_id,
+            conversation_id=conversation_id,
+            role=role,
+            content=content,
+            timestamp=timestamp,
         )
-    return {
-        "id": message_id,
-        "conversation_id": conversation_id,
-        "role": role,
-        "content": content,
-        "timestamp": timestamp,
-    }
+        session.add(message)
+        conversation.updated_at = timestamp
+        session.flush()
+        return message.to_dict()
