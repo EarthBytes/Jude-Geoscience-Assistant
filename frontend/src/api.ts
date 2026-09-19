@@ -80,6 +80,23 @@ export function deleteConversation(id: string) {
   return request<void>(`/api/conversations/${id}`, { method: 'DELETE' })
 }
 
+export function renameConversation(id: string, title: string) {
+  return request<Conversation>(`/api/conversations/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ title }),
+  })
+}
+
+export function rewindConversation(
+  id: string,
+  scope: 'assistant' | 'turn' = 'assistant',
+) {
+  return request<{ deleted: number }>(
+    `/api/conversations/${id}/trailing?scope=${scope}`,
+    { method: 'DELETE' },
+  )
+}
+
 export function getMemory() {
   return request<{ content: string; updated_at: string }>('/api/memory')
 }
@@ -144,6 +161,7 @@ export async function streamChat(
     task?: TaskType
     history?: HistoryTurn[]
     context?: string
+    regenerate?: boolean
   },
   handlers: StreamHandlers,
   signal?: AbortSignal,
@@ -163,6 +181,7 @@ export async function streamChat(
         stream: true,
         history: payload.history ?? [],
         context: payload.context ?? '',
+        regenerate: payload.regenerate ?? false,
       }),
       signal,
     })

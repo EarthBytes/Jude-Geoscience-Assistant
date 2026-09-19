@@ -69,6 +69,7 @@ class ChatRequest(BaseModel):
     stream: bool = True
     history: List[HistoryTurn] = Field(default_factory=list, max_length=MAX_HISTORY_TURNS)
     context: str = Field(default="", max_length=MAX_CONTEXT_LENGTH)
+    regenerate: bool = False
 
 
 class ChatResponse(BaseModel):
@@ -85,10 +86,3 @@ class MemoryUpdate(BaseModel):
 class MemoryOut(BaseModel):
     content: str
     updated_at: str = ""
-
-
-class ChatResponse(BaseModel):
-    conversation_id: Optional[str] = None
-    persisted: bool = False
-    user_message: MessageOut
-    assistant_message: MessageOut

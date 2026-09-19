@@ -112,16 +112,33 @@ async def chat(
             assistant_message=MessageOut(**assistant_message),
         )
 
-    conversation = _ensure_conversation(user.id, body.conversation_id, question)
-    conversation_id = conversation["id"]
-    history = store.list_messages(user.id, conversation_id)
-    if not history and conversation["title"] in ("New chat", "New Chat"):
-        store.update_conversation_title(
-            user.id, conversation_id, title_from_message(question)
-        )
+    if body.regenerate:
+        if not body.conversation_id:
+            raise HTTPException(
+                status_code=400, detail="conversation_id is required to regenerate"
+            )
+        conversation = store.get_conversation(user.id, body.conversation_id)
+        if not conversation:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+        conversation_id = conversation["id"]
+        store.rewind_messages(user.id, conversation_id, "assistant")
+        history = store.list_messages(user.id, conversation_id)
+        if not history or history[-1]["role"] != "user":
+            raise HTTPException(status_code=400, detail="Nothing to regenerate")
+        user_message = history[-1]
+        question = user_message["content"]
+        llm_messages = build_messages(history[:-1], body.task, question, context=notes)
+    else:
+        conversation = _ensure_conversation(user.id, body.conversation_id, question)
+        conversation_id = conversation["id"]
+        history = store.list_messages(user.id, conversation_id)
+        if not history and conversation["title"] in ("New chat", "New Chat"):
+            store.update_conversation_title(
+                user.id, conversation_id, title_from_message(question)
+            )
 
-    user_message = store.add_message(user.id, conversation_id, "user", question)
-    llm_messages = build_messages(history, body.task, question, context=notes)
+        user_message = store.add_message(user.id, conversation_id, "user", question)
+        llm_messages = build_messages(history, body.task, question, context=notes)
 
     if body.stream:
         return _sse_response(
