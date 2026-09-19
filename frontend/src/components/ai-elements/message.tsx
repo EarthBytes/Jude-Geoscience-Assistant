@@ -1,4 +1,12 @@
-import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react'
+import {
+  lazy,
+  Suspense,
+  useEffect,
+  useState,
+  type ButtonHTMLAttributes,
+  type ReactNode,
+} from 'react'
+import { Check } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import type { MessageRole } from '../../types'
 
@@ -28,7 +36,7 @@ export function Message({
   return (
     <div
       className={cn(
-        'flex w-full',
+        'group/message flex w-full',
         entered ? 'animate-message-in' : 'message-enter',
         isUser ? 'justify-end' : 'justify-start',
         className,
@@ -76,6 +84,61 @@ export function MessageContent({
   )
 }
 
+export function MessageActions({
+  align = 'start',
+  children,
+}: {
+  align?: 'start' | 'end'
+  children: ReactNode
+}) {
+  return (
+    <div
+      className={cn(
+        'mt-1 flex items-center gap-0.5 opacity-100 transition-opacity duration-150 md:opacity-0 md:group-hover/message:opacity-100 md:group-focus-within/message:opacity-100',
+        align === 'end' ? 'justify-end' : 'justify-start',
+      )}
+    >
+      {children}
+    </div>
+  )
+}
+
+export function MessageActionButton({
+  label,
+  copiedFeedback = false,
+  className,
+  onClick,
+  children,
+  ...props
+}: ButtonHTMLAttributes<HTMLButtonElement> & {
+  label: string
+  copiedFeedback?: boolean
+  children: ReactNode
+}) {
+  const [copied, setCopied] = useState(false)
+
+  return (
+    <button
+      type="button"
+      aria-label={copied ? 'Copied' : label}
+      title={copied ? 'Copied' : label}
+      onClick={async (event) => {
+        await onClick?.(event)
+        if (!copiedFeedback) return
+        setCopied(true)
+        window.setTimeout(() => setCopied(false), 1400)
+      }}
+      className={cn(
+        'inline-flex h-7 w-7 items-center justify-center rounded-lg text-[var(--text-ink-muted)] transition hover:bg-black/10 hover:text-[var(--text-ink)]',
+        className,
+      )}
+      {...props}
+    >
+      {copied ? <Check className="h-3.5 w-3.5" /> : children}
+    </button>
+  )
+}
+
 export function MessageResponse({ content }: { content: string }) {
   if (!content) {
     return (
@@ -88,9 +151,7 @@ export function MessageResponse({ content }: { content: string }) {
   }
 
   return (
-    <Suspense
-      fallback={<p className="whitespace-pre-wrap">{content}</p>}
-    >
+    <Suspense fallback={<p className="whitespace-pre-wrap">{content}</p>}>
       <RichMessageResponse content={content} />
     </Suspense>
   )

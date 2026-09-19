@@ -387,3 +387,89 @@ def test_guest_chat_uses_request_context(client: TestClient, monkeypatch) -> Non
     )
     assert response.status_code == 200
     assert "I am revising A-level coasts" in captured["system"]
+
+
+def test_system_prompt_asks_for_short_sources() -> None:
+    messages = build_messages([], "general", "What is granite?")
+    system = messages[0]["content"]
+    assert "Sources:" in system
+    assert "Invent URLs" in system
+
+
+def test_rewind_trailing_messages(
+    client: TestClient, member_headers: dict[str, str]
+) -> None:
+    created = client.post(
+        "/api/conversations/import",
+        json={
+            "conversations": [
+                {
+                    "title": "Plates",
+                    "messages": [
+                        {"role": "user", "content": "What is a divergent boundary?"},
+                        {"role": "assistant", "content": "Plates move apart."},
+                    ],
+                }
+            ]
+        },
+        headers=member_headers,
+    )
+    conversation_id = created.json()[0]["id"]
+
+    assistant_only = client.delete(
+        f"/api/conversations/{conversation_id}/trailing?scope=assistant",
+        headers=member_headers,
+    )
+    assert assistant_only.status_code == 200
+    assert assistant_only.json()["deleted"] == 1
+    remaining = client.get(
+        f"/api/conversations/{conversation_id}", headers=member_headers
+    ).json()["messages"]
+    assert [message["role"] for message in remaining] == ["user"]
+
+    turn = client.delete(
+        f"/api/conversations/{conversation_id}/trailing?scope=turn",
+        headers=member_headers,
+    )
+    assert turn.json()["deleted"] == 1
+    assert (
+        client.get(
+            f"/api/conversations/{conversation_id}", headers=member_headers
+        ).json()["messages"]
+        == []
+    )
+
+
+def test_member_regenerate_replaces_last_assistant(
+    client: TestClient, monkeypatch, member_headers: dict[str, str]
+) -> None:
+    replies = iter(["First answer.", "Regenerated answer."])
+
+    async def fake_reply(_: list[dict[str, str]]) -> str:
+        return next(replies)
+
+    monkeypatch.setattr(chat, "generate_reply", fake_reply)
+    first = client.post(
+        "/api/chat",
+        json={"message": "Explain granite", "stream": False},
+        headers=member_headers,
+    )
+    conversation_id = first.json()["conversation_id"]
+
+    regenerated = client.post(
+        "/api/chat",
+        json={
+            "message": "Explain granite",
+            "conversation_id": conversation_id,
+            "stream": False,
+            "regenerate": True,
+        },
+        headers=member_headers,
+    )
+    assert regenerated.status_code == 200
+    messages = client.get(
+        f"/api/conversations/{conversation_id}", headers=member_headers
+    ).json()["messages"]
+    assert [message["role"] for message in messages] == ["user", "assistant"]
+    assert messages[0]["content"] == "Explain granite"
+    assert messages[1]["content"] == "Regenerated answer."

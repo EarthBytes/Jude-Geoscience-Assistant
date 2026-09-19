@@ -5,6 +5,7 @@ import {
   useState,
   type FormEvent,
 } from 'react'
+import { Copy, Download, Pencil, RefreshCw } from 'lucide-react'
 import {
   deleteConversation,
   getConversation,
@@ -12,6 +13,8 @@ import {
   importConversations,
   listConversations,
   putMemory,
+  renameConversation,
+  rewindConversation,
   setAuthTokenGetter,
   streamChat,
   type GuestThread,
@@ -24,6 +27,8 @@ import {
 } from './components/ai-elements/conversation'
 import {
   Message,
+  MessageActionButton,
+  MessageActions,
   MessageContent,
   MessageResponse,
 } from './components/ai-elements/message'
@@ -34,6 +39,12 @@ import {
   PromptInputTextarea,
 } from './components/ai-elements/prompt-input'
 import { Sidebar } from './components/Sidebar'
+import {
+  copyText,
+  downloadTextFile,
+  slugifyFilename,
+  threadToMarkdown,
+} from './lib/utils'
 import type { Conversation as ConversationType, Message as ChatMessage } from './types'
 
 function temporaryId(prefix: string) {
@@ -44,6 +55,15 @@ function titleFromMessage(message: string, maxLen = 48) {
   const cleaned = message.trim().replace(/\s+/g, ' ')
   if (!cleaned) return 'New chat'
   return cleaned.length <= maxLen ? cleaned : `${cleaned.slice(0, maxLen - 1).trimEnd()}…`
+}
+
+function lastIndexOfRole(messages: ChatMessage[], role: ChatMessage['role']) {
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    if (messages[index]?.role === role && messages[index].content.trim()) {
+      return index
+    }
+  }
+  return -1
 }
 
 export default function App() {
@@ -83,6 +103,11 @@ export default function App() {
         created_at: thread.created_at,
         updated_at: thread.updated_at,
       }))
+
+  const lastUserIndex = lastIndexOfRole(messages, 'user')
+  const lastAssistantIndex = lastIndexOfRole(messages, 'assistant')
+  const activeTitle =
+    conversations.find((item) => item.id === activeId)?.title ?? 'Jude chat'
 
   useEffect(() => {
     setAuthTokenGetter(() => auth.getToken())
@@ -249,6 +274,32 @@ export default function App() {
     }
   }
 
+  async function handleRename(id: string, title: string) {
+    if (!isSignedIn) {
+      setGuestThreads((prev) =>
+        prev.map((thread) =>
+          thread.id === id
+            ? { ...thread, title, updated_at: new Date().toISOString() }
+            : thread,
+        ),
+      )
+      return
+    }
+    const previous = serverConversations
+    setServerConversations((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, title } : item)),
+    )
+    try {
+      const updated = await renameConversation(id, title)
+      setServerConversations((prev) =>
+        prev.map((item) => (item.id === id ? updated : item)),
+      )
+    } catch (err) {
+      setServerConversations(previous)
+      setError(err instanceof Error ? err.message : 'Failed to rename chat')
+    }
+  }
+
   function upsertGuestThread(threadId: string, nextMessages: ChatMessage[], title?: string) {
     const now = new Date().toISOString()
     setGuestThreads((prev) => {
@@ -264,12 +315,13 @@ export default function App() {
     })
   }
 
-  async function sendMessage(raw: string) {
+  async function sendMessage(raw: string, options?: { regenerate?: boolean }) {
     const text = raw.trim()
+    const regenerate = Boolean(options?.regenerate)
     if (!text || status !== 'ready') return
 
     setError(null)
-    setInput('')
+    if (!regenerate) setInput('')
     setStatus('submitted')
 
     let conversationId = activeId
@@ -278,7 +330,13 @@ export default function App() {
       setActiveId(conversationId)
     }
 
-    const priorHistory = messages
+    let baseMessages = messages
+    if (regenerate && baseMessages[baseMessages.length - 1]?.role === 'assistant') {
+      baseMessages = baseMessages.slice(0, -1)
+    }
+
+    const historySource = regenerate ? baseMessages.slice(0, -1) : messages
+    const priorHistory = historySource
       .filter(
         (message) =>
           (message.role === 'user' || message.role === 'assistant') &&
@@ -289,13 +347,22 @@ export default function App() {
         content: message.content,
       }))
 
-    const optimisticUser: ChatMessage = {
-      id: temporaryId('user'),
-      conversation_id: conversationId ?? 'pending',
-      role: 'user',
-      content: text,
-      timestamp: new Date().toISOString(),
-    }
+    const optimisticUser: ChatMessage = regenerate
+      ? (baseMessages[baseMessages.length - 1] ?? {
+          id: temporaryId('user'),
+          conversation_id: conversationId ?? 'pending',
+          role: 'user',
+          content: text,
+          timestamp: new Date().toISOString(),
+        })
+      : {
+          id: temporaryId('user'),
+          conversation_id: conversationId ?? 'pending',
+          role: 'user',
+          content: text,
+          timestamp: new Date().toISOString(),
+        }
+
     const streamingAssistant: ChatMessage = {
       id: temporaryId('assistant'),
       conversation_id: conversationId ?? 'pending',
@@ -305,7 +372,9 @@ export default function App() {
     }
     streamingIdRef.current = streamingAssistant.id
 
-    const nextMessages = [...messages, optimisticUser, streamingAssistant]
+    const nextMessages = regenerate
+      ? [...baseMessages, streamingAssistant]
+      : [...messages, optimisticUser, streamingAssistant]
     setMessages(nextMessages)
     if (!isSignedIn && conversationId) {
       upsertGuestThread(
@@ -325,6 +394,7 @@ export default function App() {
           message: text,
           history: isSignedIn ? [] : priorHistory,
           context: memoryRef.current,
+          regenerate: isSignedIn && regenerate,
         },
         {
           onMeta: (meta) => {
@@ -431,6 +501,42 @@ export default function App() {
     void sendMessage(input)
   }
 
+  async function handleEditLast() {
+    if (status !== 'ready') return
+    const index = lastIndexOfRole(messages, 'user')
+    if (index < 0) return
+    const lastUser = messages[index]
+    const snapshot = messages
+    setInput(lastUser.content)
+    const next = messages.slice(0, index)
+    setMessages(next)
+    if (!isSignedIn) {
+      if (activeId) upsertGuestThread(activeId, next)
+      return
+    }
+    if (!activeId) return
+    try {
+      await rewindConversation(activeId, 'turn')
+      await refreshConversations()
+    } catch (err) {
+      setMessages(snapshot)
+      setInput('')
+      setError(err instanceof Error ? err.message : 'Could not edit that question')
+    }
+  }
+
+  function handleRegenerate() {
+    if (status !== 'ready') return
+    const index = lastIndexOfRole(messages, 'user')
+    if (index < 0) return
+    void sendMessage(messages[index].content, { regenerate: true })
+  }
+
+  function handleExport() {
+    const markdown = threadToMarkdown(activeTitle, messages)
+    downloadTextFile(`${slugifyFilename(activeTitle)}.md`, markdown)
+  }
+
   function handleMemoryChange(value: string) {
     setMemory(value)
     if (!isSignedIn) return
@@ -461,6 +567,7 @@ export default function App() {
         onSelect={(id) => void selectConversation(id)}
         onNewChat={startNewChat}
         onDelete={(id) => void handleDelete(id)}
+        onRename={(id, title) => void handleRename(id, title)}
         memory={memory}
         isSignedIn={Boolean(isSignedIn)}
         onMemoryChange={handleMemoryChange}
@@ -477,6 +584,16 @@ export default function App() {
             </p>
           </div>
           <div className="flex items-center gap-3">
+            {messages.length > 0 ? (
+              <button
+                type="button"
+                onClick={handleExport}
+                className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border-soft)] px-3 py-1 text-xs text-[var(--mist)] transition hover:bg-[var(--hover-on-dark)] hover:text-[var(--parchment)]"
+              >
+                <Download className="h-3.5 w-3.5" />
+                Export
+              </button>
+            ) : null}
             {status === 'streaming' ? (
               <div
                 className="hidden items-center gap-2 rounded-full border border-[var(--border-soft)] bg-[var(--hover-on-dark)] px-3 py-1 text-xs text-[var(--mist)] sm:flex"
@@ -505,7 +622,7 @@ export default function App() {
                 description="Meet Jude — your companion for understanding the world’s geography and geology."
               />
             ) : (
-              messages.map((message) => (
+              messages.map((message, index) => (
                 <Message key={message.id} from={message.role}>
                   <MessageContent from={message.role}>
                     {message.role === 'assistant' ? (
@@ -514,6 +631,40 @@ export default function App() {
                       <p className="whitespace-pre-wrap">{message.content}</p>
                     )}
                   </MessageContent>
+                  {status === 'ready' && message.content.trim() ? (
+                    <MessageActions align={message.role === 'user' ? 'end' : 'start'}>
+                      {message.role === 'assistant' ? (
+                        <MessageActionButton
+                          label="Copy reply"
+                          copiedFeedback
+                          onClick={() => void copyText(message.content)}
+                        >
+                          <Copy className="h-3.5 w-3.5" />
+                        </MessageActionButton>
+                      ) : null}
+                      {index === lastUserIndex ? (
+                        <MessageActionButton
+                          label="Edit question"
+                          className={
+                            message.role === 'user'
+                              ? 'text-[var(--parchment)]/70 hover:bg-white/10 hover:text-[var(--parchment)]'
+                              : undefined
+                          }
+                          onClick={() => void handleEditLast()}
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </MessageActionButton>
+                      ) : null}
+                      {index === lastAssistantIndex ? (
+                        <MessageActionButton
+                          label="Regenerate reply"
+                          onClick={handleRegenerate}
+                        >
+                          <RefreshCw className="h-3.5 w-3.5" />
+                        </MessageActionButton>
+                      ) : null}
+                    </MessageActions>
+                  ) : null}
                 </Message>
               ))
             )}
@@ -546,6 +697,9 @@ export default function App() {
                   />
                 </PromptInputFooter>
               </PromptInput>
+              <p className="mt-2 px-1 text-center text-[0.68rem] leading-relaxed text-[var(--text-muted)]">
+                Jude can be wrong. Check important facts.
+              </p>
             </div>
           </div>
         </Conversation>

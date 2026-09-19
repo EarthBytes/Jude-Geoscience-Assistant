@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
-import { Message, MessageResponse } from './message'
+import { Message, MessageActionButton, MessageResponse } from './message'
 import { RichMessageResponse } from './rich-message-response'
 
 describe('MessageResponse', () => {
@@ -65,5 +65,17 @@ describe('RichMessageResponse', () => {
     expect(screen.getByText('granite')).toBeInTheDocument()
     expect(screen.getByText('weathering')).toBeInTheDocument()
     expect(screen.getByText('Igneous')).toBeInTheDocument()
+  })
+})
+
+describe('MessageActionButton', () => {
+  it('exposes a labelled copy control', () => {
+    render(
+      <MessageActionButton label="Copy reply">
+        Copy
+      </MessageActionButton>,
+    )
+
+    expect(screen.getByRole('button', { name: 'Copy reply' })).toBeInTheDocument()
   })
 })

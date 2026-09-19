@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from typing import List
+from typing import List, Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 
 from app.auth import User, require_user
 from app.schemas import (
@@ -85,6 +85,17 @@ def rename_conversation(
     if not updated:
         raise HTTPException(status_code=404, detail="Conversation not found")
     return ConversationOut(**updated)
+
+
+@router.delete("/{conversation_id}/trailing")
+def rewind_trailing(
+    conversation_id: str,
+    scope: Literal["assistant", "turn"] = Query("assistant"),
+    user: User = Depends(require_user),
+) -> dict:
+    _owned_or_404(user.id, conversation_id)
+    deleted = store.rewind_messages(user.id, conversation_id, scope)
+    return {"deleted": deleted}
 
 
 @router.delete("/{conversation_id}", status_code=204, response_class=Response)

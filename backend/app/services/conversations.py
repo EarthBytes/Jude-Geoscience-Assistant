@@ -141,3 +141,41 @@ def add_message(user_id: str, conversation_id: str, role: str, content: str) -> 
         conversation.updated_at = timestamp
         session.flush()
         return message.to_dict()
+
+
+def rewind_messages(
+    user_id: str, conversation_id: str, scope: str = "assistant"
+) -> int:
+    """Remove the last assistant reply, or the last user+assistant turn."""
+    with db_session() as session:
+        conversation = session.scalar(
+            select(Conversation).where(
+                Conversation.id == conversation_id,
+                Conversation.user_id == user_id,
+            )
+        )
+        if conversation is None:
+            return 0
+        rows = list(
+            session.scalars(
+                select(Message)
+                .where(Message.conversation_id == conversation_id)
+                .order_by(Message.timestamp.desc())
+            ).all()
+        )
+        to_delete: list[Message] = []
+        if scope == "turn":
+            if rows and rows[0].role == "assistant":
+                to_delete.append(rows[0])
+                rows = rows[1:]
+            if rows and rows[0].role == "user":
+                to_delete.append(rows[0])
+        else:
+            if rows and rows[0].role == "assistant":
+                to_delete.append(rows[0])
+        for row in to_delete:
+            session.delete(row)
+        if to_delete:
+            conversation.updated_at = utc_now()
+        session.flush()
+        return len(to_delete)
